@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arthur Murray Marlton - Event Media Upload</title>
+    <!-- Import a similar font to capture the script style -->
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            /* Studio Maroon Background */
+            background-color: #5d1833;
+            font-family: 'Roboto', sans-serif;
+            text-align: center;
+            padding: 40px 20px;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            /* Gold-Colored Card */
+            max-width: 450px;
+            width: 100%;
+            background-color: #dfaf37;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        h2 {
+            /* Maroon Script Font */
+            font-family: 'Dancing Script', cursive;
+            color: #5d1833;
+            font-size: 48px;
+            margin-bottom: 10px;
+            margin-top: 0;
+            font-weight: 700;
+        }
+        p {
+            color: #000;
+            font-size: 18px;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .custom-file-upload {
+            /* Dark Gray 'Choose Photos' Button */
+            background-color: #3a4652;
+            color: #ffffff;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-block;
+            font-weight: 400;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin-bottom: 20px;
+        }
+        .custom-file-upload:hover {
+            background-color: #4f5e6e;
+        }
+        #fileName {
+            font-size: 14px;
+            color: #000;
+            margin-bottom: 20px;
+            min-height: 1.2em; /* Prevents jumping */
+        }
+        button[type="submit"] {
+            /* Red 'Upload to Studio' Button */
+            background-color: #a72b5a;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button[type="submit"]:hover {
+            background-color: #5d1833;
+        }
+        button[type="submit"]:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            font-weight: 400;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Arthur Murray Marlton</h2>
+        <p>Share your event photos and videos with us!</p>
+        
+        <form id="uploadForm">
+            <label class="custom-file-upload">
+                Choose Photos / Videos
+                <input type="file" id="fileInput" accept="image/*,video/*" multiple required>
+            </label>
+            <div id="fileName">No file(s) selected</div>
+            <button type="submit" id="submitBtn">Upload to Studio</button>
+        </form>
+        <div id="status"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
