@@ -28,7 +28,7 @@ form.addEventListener('submit', async e => {
         statusDiv.textContent = `Uploading ${file.name} (${i + 1} of ${files.length})...`;
         
         try {
-            await uploadFileInChunks(file);
+            await uploadFileDirectly(file);
         } catch (error) {
             statusDiv.style.color = "#ff6b6b";
             statusDiv.textContent = `Error uploading ${file.name}: ${error.message}`;
@@ -44,44 +44,33 @@ form.addEventListener('submit', async e => {
     submitBtn.disabled = false;
 });
 
-async function uploadFileInChunks(file) {
-    const chunkSize = 3 * 1024 * 1024; // 3MB chunks to stay safely under limits
-    const totalChunks = Math.ceil(file.size / chunkSize);
-    let fileId = null;
+function uploadFileDirectly(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async function() {
+            try {
+                const base64Data = reader.result.split(',')[1];
+                const formData = new URLSearchParams();
+                formData.append('data', base64Data);
+                formData.append('filename', file.name);
+                formData.append('mimetype', file.type || 'application/octet-stream');
 
-    for (let index = 0; index < totalChunks; index++) {
-        const start = index * chunkSize;
-        const end = Math.min(start + chunkSize, file.size);
-        const chunk = file.slice(start, end);
+                const response = await fetch(scriptURL, {
+                    method: 'POST',
+                    body: formData
+                });
 
-        const base64Data = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(chunk);
-        });
-
-        const payload = {
-            fileName: file.name,
-            mimeType: file.type || "application/octet-stream",
-            data: base64Data,
-            chunkIndex: index,
-            totalChunks: totalChunks,
-            fileId: fileId
+                const result = await response.json();
+                if (result.status === 'success') {
+                    resolve(result);
+                } else {
+                    reject(new Error(result.message || 'Upload failed'));
+                }
+            } catch (err) {
+                reject(err);
+            }
         };
-
-        const response = await fetch(scriptURL, {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        if (result.status !== 'success') {
-            throw new Error(result.message || 'Upload failed');
-        }
-        
-        fileId = result.fileId;
-        const percent = Math.round(((index + 1) / totalChunks) * 100);
-        statusDiv.textContent = `Uploading ${file.name}: ${percent}%`;
-    }
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+    });
 }
