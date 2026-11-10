@@ -1,4 +1,4 @@
-const scriptURL = "https://script.google.com/macros/s/AKfycbtZAND0-KEpzvavyBzo2xgy9d4w8ZJWdchv89F_anCeEZSJ1Wj722IsOsl/exec";
+const scriptURL = "https://script.google.com/macros/s/AKfycbzA-r2Ejkx22TZGmPCDRFxS7Q9rqMxtu1PdUpW3pd0K6-MXpGf19qL2oizMSE8TYxKzVA/exec";
 
 const form = document.getElementById('uploadForm');
 const fileInput = document.getElementById('fileInput');
@@ -50,15 +50,15 @@ function uploadFile(file) {
         reader.onload = async function() {
             try {
                 const base64Data = reader.result.split(',')[1];
-                const payload = {
-                    fileData: base64Data,
-                    fileName: file.name,
-                    mimeType: file.type || "application/octet-stream"
-                };
+                
+                const formData = new URLSearchParams();
+                formData.append('fileData', base64Data);
+                formData.append('fileName', file.name);
+                formData.append('mimeType', file.type || "application/octet-stream");
 
                 const response = await fetch(scriptURL, {
                     method: 'POST',
-                    body: JSON.stringify(payload)
+                    body: formData
                 });
 
                 const result = await response.json();
