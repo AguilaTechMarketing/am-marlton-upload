@@ -28,7 +28,7 @@ form.addEventListener('submit', async e => {
         statusDiv.textContent = `Uploading ${file.name} (${i + 1} of ${files.length})...`;
         
         try {
-            await uploadFileDirectly(file);
+            await uploadFile(file);
         } catch (error) {
             statusDiv.style.color = "#ff6b6b";
             statusDiv.textContent = `Error uploading ${file.name}: ${error.message}`;
@@ -38,26 +38,27 @@ form.addEventListener('submit', async e => {
     }
 
     statusDiv.style.color = "#4BB543";
-    statusDiv.textContent = "All files successfully uploaded to the studio!";
+    statusDiv.textContent = "All files successfully uploaded!";
     form.reset();
     fileNameDisplay.textContent = 'No file(s) selected';
     submitBtn.disabled = false;
 });
 
-function uploadFileDirectly(file) {
+function uploadFile(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = async function() {
             try {
                 const base64Data = reader.result.split(',')[1];
-                const formData = new URLSearchParams();
-                formData.append('data', base64Data);
-                formData.append('filename', file.name);
-                formData.append('mimetype', file.type || 'application/octet-stream');
+                const payload = {
+                    fileData: base64Data,
+                    fileName: file.name,
+                    mimeType: file.type || "application/octet-stream"
+                };
 
                 const response = await fetch(scriptURL, {
                     method: 'POST',
-                    body: formData
+                    body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
