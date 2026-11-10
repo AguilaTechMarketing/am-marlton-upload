@@ -1,4 +1,4 @@
-const scriptURL = "https://script.google.com/macros/s/AKfycbyqbLzqtNjJ1JCKNCs8m6IEhIRY_TarJKoxoWQeP_QYFG8a7IEK2_gkHQ2iP42Bp9yZ-Q/exec";
+const scriptURL = "https://script.google.com/macros/s/AKfycbtZAND0-KEpzvavyBzo2xgy9d4w8ZJWdchv89F_anCeEZSJ1Wj722IsOsl/exec";
 
 const form = document.getElementById('uploadForm');
 const fileInput = document.getElementById('fileInput');
