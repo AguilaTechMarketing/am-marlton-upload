@@ -1,12 +1,12 @@
 /**
  * Arthur Murray Marlton - Frontend Event Media Upload Handler
- * Converts selected images/videos to Base64 and submits them sequentially
- * via a hidden iframe form POST to bypass cross-origin fetch limits.
+ * Reads selected photos/videos as Base64 and posts them to Google Apps Script,
+ * verifying the returned JSON status before reporting success.
  */
 const mediaUploadHandler = {
     config: {
         scriptURL: 'https://script.google.com/macros/s/AKfycbzA-r2Ejkx22TZGmPCDRFxS7Q9rqMxtu1PdUpW3pd0K6-MXpGf19qL2oizMSE8TYxKzVA/exec',
-        maxFileSize: 45 * 1024 * 1024, // 45MB safe ceiling for Base64 POST payloads in Apps Script
+        maxFileSize: 25 * 1024 * 1024, // 25MB per file for reliable Base64 POST requests
         allowedTypes: [
             'image/jpeg',
             'image/png',
@@ -21,8 +21,7 @@ const mediaUploadHandler = {
         fileInputId: 'fileInput',
         fileNameId: 'fileName',
         submitBtnId: 'submitBtn',
-        statusId: 'status',
-        iframeId: 'hiddenFrame'
+        statusId: 'status'
     },
 
     elements: {},
@@ -33,7 +32,6 @@ const mediaUploadHandler = {
         this.elements.fileNameDisplay = document.getElementById(this.config.fileNameId);
         this.elements.submitBtn = document.getElementById(this.config.submitBtnId);
         this.elements.statusDiv = document.getElementById(this.config.statusId);
-        this.elements.iframe = document.getElementById(this.config.iframeId);
 
         if (!this.elements.form || !this.elements.fileInput) return;
 
@@ -54,11 +52,54 @@ const mediaUploadHandler = {
 
     validateFile: function (file) {
         if (file.size > this.config.maxFileSize) {
-            throw new Error(`"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max is 45MB.`);
+            throw new Error(`"${file.name}" exceeds the 25MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`);
         }
         if (file.type && !this.config.allowedTypes.includes(file.type.toLowerCase())) {
             throw new Error(`"${file.name}" has an unsupported format (${file.type}).`);
         }
+    },
+
+    readFileAsBase64: function (file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const parts = String(reader.result || '').split(',');
+                if (parts.length < 2 || !parts[1]) {
+                    reject(new Error(`Failed to encode "${file.name}".`));
+                    return;
+                }
+                resolve(parts[1]);
+            };
+            reader.onerror = () => reject(new Error(`Failed to read "${file.name}".`));
+            reader.readAsDataURL(file);
+        });
+    },
+
+    uploadSingleFile: async function (file) {
+        const base64Data = await this.readFileAsBase64(file);
+        const body = new URLSearchParams();
+        body.append('fileData', base64Data);
+        body.append('fileName', file.name);
+        body.append('mimeType', file.type || 'application/octet-stream');
+
+        const response = await fetch(this.config.scriptURL, {
+            method: 'POST',
+            body: body
+        });
+
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (_) {
+            throw new Error('Unexpected response from Google Apps Script. Check web app access ("Anyone") and deployment version.');
+        }
+
+        if (!response.ok || data.status !== 'success') {
+            throw new Error(data.message || 'Apps Script did not confirm file creation.');
+        }
+
+        return data;
     },
 
     handleFormSubmit: async function (event) {
@@ -66,79 +107,38 @@ const mediaUploadHandler = {
         const files = Array.from(this.elements.fileInput.files || []);
 
         if (files.length === 0) {
-            this.setStatus('Please select at least one photo or video.', '#ff6b6b');
+            this.setStatus('Please select at least one photo or video.', '#b71c1c');
             return;
         }
 
         try {
             files.forEach((file) => this.validateFile(file));
         } catch (error) {
-            this.setStatus(error.message, '#ff6b6b');
+            this.setStatus(error.message, '#b71c1c');
             return;
         }
 
-        this.elements.submitBtn.disabled = true;
+        if (this.elements.submitBtn) {
+            this.elements.submitBtn.disabled = true;
+        }
 
         try {
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 this.setStatus(`Uploading ${file.name} (${i + 1} of ${files.length})...`, '#000000');
-                await this.postFileViaIframe(file);
+                await this.uploadSingleFile(file);
             }
 
             this.setStatus('File(s) successfully uploaded to the studio!', '#2e7d32');
             this.elements.form.reset();
             this.elements.fileNameDisplay.textContent = 'No file(s) selected';
         } catch (error) {
-            this.setStatus(`Upload error: ${error.message}`, '#b71c1c');
+            this.setStatus(`Upload failed: ${error.message}`, '#b71c1c');
         } finally {
-            this.elements.submitBtn.disabled = false;
+            if (this.elements.submitBtn) {
+                this.elements.submitBtn.disabled = false;
+            }
         }
-    },
-
-    /**
-     * Reads a file as Base64 and submits it via a temporary hidden form targeting hiddenFrame.
-     */
-    postFileViaIframe: function (file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-
-            reader.onload = () => {
-                const base64Data = reader.result.split(',')[1];
-                const tempForm = document.createElement('form');
-                tempForm.method = 'POST';
-                tempForm.action = this.config.scriptURL;
-                tempForm.target = this.config.iframeId;
-                tempForm.style.display = 'none';
-
-                const fields = {
-                    fileData: base64Data,
-                    fileName: file.name,
-                    mimeType: file.type || 'application/octet-stream'
-                };
-
-                Object.entries(fields).forEach(([key, value]) => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = key;
-                    input.value = value;
-                    tempForm.appendChild(input);
-                });
-
-                const onIframeLoad = () => {
-                    this.elements.iframe.removeEventListener('load', onIframeLoad);
-                    tempForm.remove();
-                    resolve();
-                };
-
-                this.elements.iframe.addEventListener('load', onIframeLoad);
-                document.body.appendChild(tempForm);
-                tempForm.submit();
-            };
-
-            reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
-            reader.readAsDataURL(file);
-        });
     },
 
     setStatus: function (message, color) {
