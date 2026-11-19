@@ -77,29 +77,20 @@ const mediaUploadHandler = {
 
     uploadSingleFile: async function (file) {
         const base64Data = await this.readFileAsBase64(file);
-        const body = new URLSearchParams();
-        body.append('fileData', base64Data);
-        body.append('fileName', file.name);
-        body.append('mimeType', file.type || 'application/octet-stream');
-
-        const response = await fetch(this.config.scriptURL, {
-            method: 'POST',
-            body: body
+        const payload = JSON.stringify({
+            fileData: base64Data,
+            fileName: file.name,
+            mimeType: file.type || 'application/octet-stream'
         });
 
-        const text = await response.text();
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch (_) {
-            throw new Error('Unexpected response from Google Apps Script. Check web app access ("Anyone") and deployment version.');
-        }
-
-        if (!response.ok || data.status !== 'success') {
-            throw new Error(data.message || 'Apps Script did not confirm file creation.');
-        }
-
-        return data;
+        await fetch(this.config.scriptURL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: payload
+        });
     },
 
     handleFormSubmit: async function (event) {
