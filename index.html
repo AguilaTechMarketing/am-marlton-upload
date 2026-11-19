@@ -1,75 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!--
-      Document Configuration & Metadata:
-      Sets character encoding, mobile viewport scaling, and page title.
-    -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arthur Murray Marlton - Event Media Upload</title>
-
-    <!-- Google Fonts Import: Loads studio script and sans-serif typography -->
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-
-    <!-- External Stylesheet Import: Verify filename matches style.css or styles.css in your repo -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Main Container: Holds the upload card and status feedback -->
     <div class="container">
-        <!-- Header Section: Displays studio branding and upload prompt -->
         <header>
             <h2>Arthur Murray Marlton</h2>
             <p>Share your event photos and videos with us!</p>
         </header>
 
-        <!--
-          Upload Form Section:
-          Submits natively via POST to the Google Apps Script web app URL using
-          target="hiddenFrame" so responses stay in a hidden frame and avoid
-          cross-origin fetch issues on mobile browsers.
-        -->
         <section class="upload-section">
-            <form id="uploadForm"
-                  action="https://script.google.com/macros/s/AKfycbzA-r2Ejkx22TZGmPCDRFxS7Q9rqMxtu1PdUpW3pd0K6-MXpGf19qL2oizMSE8TYxKzVA/exec"
-                  method="POST"
-                  target="hiddenFrame">
+            <form id="uploadForm">
                 <label for="fileInput" class="custom-file-upload">
                     Choose Photos / Videos
                 </label>
-                <input type="file" id="fileInput" name="fileData" accept="image/*,video/*" multiple required>
+                <input type="file" id="fileInput" accept="image/*,video/*" multiple required>
 
-                <!-- Displays selected file count before submission -->
                 <div id="fileName">No file(s) selected</div>
 
                 <button type="submit" id="submitBtn">Upload to Studio</button>
             </form>
 
-            <!-- Live status feedback for uploading and completion states -->
             <div id="status"></div>
         </section>
 
-        <!-- Footer Section: Studio copyright and contact link -->
         <footer>
             <p>&copy; 2026 Arthur Murray Marlton. All rights reserved.</p>
             <p>Contact us at <a href="mailto:info@arthurmurraymarlton.com">info@arthurmurraymarlton.com</a></p>
         </footer>
     </div>
 
-    <!--
-      Hidden Iframe Target:
-      Receives the POST response in the background; when `submitted` is true,
-      `onload` calls handleUploadComplete() defined in script.js.
-    -->
-    <iframe id="hiddenFrame" name="hiddenFrame" style="display:none;" onload="if (submitted) { handleUploadComplete(); }"></iframe>
+    <!-- Hidden iframe used to submit Base64-encoded form payloads without CORS errors -->
+    <iframe id="hiddenFrame" name="hiddenFrame" style="display:none;"></iframe>
 
-    <!-- Global submission flag tracked by script.js -->
-    <script>
-        var submitted = false;
-    </script>
-
-    <!-- External Frontend Script: Handles file count display, button state, and reset -->
     <script src="script.js"></script>
 </body>
 </html>

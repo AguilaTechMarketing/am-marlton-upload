@@ -1,12 +1,12 @@
 /**
  * Arthur Murray Marlton - Frontend Event Media Upload Handler
- * Connects the upload form UI to the hidden iframe submission flow, updates
- * selected file counts, prevents duplicate submissions, and resets state on completion.
+ * Converts selected images/videos to Base64 and submits them sequentially
+ * via a hidden iframe form POST to bypass cross-origin fetch limits.
  */
 const mediaUploadHandler = {
-    // DOM references and upload guardrails for event media submissions
     config: {
-        maxFileSize: 250 * 1024 * 1024, // 250MB limit per file to accommodate mobile event videos
+        scriptURL: 'https://script.google.com/macros/s/AKfycbzA-r2Ejkx22TZGmPCDRFxS7Q9rqMxtu1PdUpW3pd0K6-MXpGf19qL2oizMSE8TYxKzVA/exec',
+        maxFileSize: 45 * 1024 * 1024, // 45MB safe ceiling for Base64 POST payloads in Apps Script
         allowedTypes: [
             'image/jpeg',
             'image/png',
@@ -21,73 +21,51 @@ const mediaUploadHandler = {
         fileInputId: 'fileInput',
         fileNameId: 'fileName',
         submitBtnId: 'submitBtn',
-        statusId: 'status'
+        statusId: 'status',
+        iframeId: 'hiddenFrame'
     },
 
-    // Cached DOM elements populated during init()
     elements: {},
 
-    /**
-     * Initialize the upload handler and bind UI event listeners.
-     */
     init: function () {
         this.elements.form = document.getElementById(this.config.formId);
         this.elements.fileInput = document.getElementById(this.config.fileInputId);
         this.elements.fileNameDisplay = document.getElementById(this.config.fileNameId);
         this.elements.submitBtn = document.getElementById(this.config.submitBtnId);
         this.elements.statusDiv = document.getElementById(this.config.statusId);
+        this.elements.iframe = document.getElementById(this.config.iframeId);
 
-        if (!this.elements.form || !this.elements.fileInput) {
-            return;
-        }
+        if (!this.elements.form || !this.elements.fileInput) return;
 
-        // Update selected file count whenever the user picks files
         this.elements.fileInput.addEventListener('change', () => {
             this.handleFileSelection();
         });
 
-        // Validate files and lock UI before native form submission to hiddenFrame
         this.elements.form.addEventListener('submit', (event) => {
             this.handleFormSubmit(event);
         });
     },
 
-    /**
-     * Update the file counter label based on chosen files.
-     */
     handleFileSelection: function () {
         const files = this.elements.fileInput.files;
-        if (files && files.length > 0) {
-            this.elements.fileNameDisplay.textContent = `${files.length} file(s) selected`;
-        } else {
-            this.elements.fileNameDisplay.textContent = 'No file(s) selected';
-        }
+        this.elements.fileNameDisplay.textContent =
+            files && files.length > 0 ? `${files.length} file(s) selected` : 'No file(s) selected';
     },
 
-    /**
-     * Validate a single file's size and MIME type before allowing submission.
-     * Allows empty file.type fallback when mobile browsers omit MIME strings.
-     * @param {File} file
-     */
     validateFile: function (file) {
         if (file.size > this.config.maxFileSize) {
-            throw new Error(`"${file.name}" exceeds the 250MB size limit.`);
+            throw new Error(`"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max is 45MB.`);
         }
-
         if (file.type && !this.config.allowedTypes.includes(file.type.toLowerCase())) {
             throw new Error(`"${file.name}" has an unsupported format (${file.type}).`);
         }
     },
 
-    /**
-     * Run validation on all selected files; block submission if any file fails.
-     * @param {SubmitEvent} event
-     */
-    handleFormSubmit: function (event) {
+    handleFormSubmit: async function (event) {
+        event.preventDefault();
         const files = Array.from(this.elements.fileInput.files || []);
 
         if (files.length === 0) {
-            event.preventDefault();
             this.setStatus('Please select at least one photo or video.', '#ff6b6b');
             return;
         }
@@ -95,42 +73,74 @@ const mediaUploadHandler = {
         try {
             files.forEach((file) => this.validateFile(file));
         } catch (error) {
-            event.preventDefault();
-            window.submitted = false;
             this.setStatus(error.message, '#ff6b6b');
             return;
         }
 
-        // Allow native POST to target="hiddenFrame" while preventing double-clicks
-        window.submitted = true;
-        if (this.elements.submitBtn) {
-            this.elements.submitBtn.disabled = true;
-        }
-        this.setStatus('Uploading file(s) to studio... Please wait.', '#f4f4f4');
-    },
+        this.elements.submitBtn.disabled = true;
 
-    /**
-     * Reset form controls and show confirmation after hiddenFrame finishes loading.
-     */
-    onUploadComplete: function () {
-        this.setStatus('File(s) successfully uploaded to the studio!', '#4BB543');
-        if (this.elements.form) {
+        try {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                this.setStatus(`Uploading ${file.name} (${i + 1} of ${files.length})...`, '#000000');
+                await this.postFileViaIframe(file);
+            }
+
+            this.setStatus('File(s) successfully uploaded to the studio!', '#2e7d32');
             this.elements.form.reset();
-        }
-        if (this.elements.fileNameDisplay) {
             this.elements.fileNameDisplay.textContent = 'No file(s) selected';
-        }
-        if (this.elements.submitBtn) {
+        } catch (error) {
+            this.setStatus(`Upload error: ${error.message}`, '#b71c1c');
+        } finally {
             this.elements.submitBtn.disabled = false;
         }
-        window.submitted = false;
     },
 
     /**
-     * Helper to update status text and color consistently.
-     * @param {string} message
-     * @param {string} color
+     * Reads a file as Base64 and submits it via a temporary hidden form targeting hiddenFrame.
      */
+    postFileViaIframe: function (file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = () => {
+                const base64Data = reader.result.split(',')[1];
+                const tempForm = document.createElement('form');
+                tempForm.method = 'POST';
+                tempForm.action = this.config.scriptURL;
+                tempForm.target = this.config.iframeId;
+                tempForm.style.display = 'none';
+
+                const fields = {
+                    fileData: base64Data,
+                    fileName: file.name,
+                    mimeType: file.type || 'application/octet-stream'
+                };
+
+                Object.entries(fields).forEach(([key, value]) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    tempForm.appendChild(input);
+                });
+
+                const onIframeLoad = () => {
+                    this.elements.iframe.removeEventListener('load', onIframeLoad);
+                    tempForm.remove();
+                    resolve();
+                };
+
+                this.elements.iframe.addEventListener('load', onIframeLoad);
+                document.body.appendChild(tempForm);
+                tempForm.submit();
+            };
+
+            reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
+            reader.readAsDataURL(file);
+        });
+    },
+
     setStatus: function (message, color) {
         if (this.elements.statusDiv) {
             this.elements.statusDiv.style.color = color;
@@ -139,12 +149,6 @@ const mediaUploadHandler = {
     }
 };
 
-// Bridge function called by the hidden iframe onload attribute in index.html
-function handleUploadComplete() {
-    mediaUploadHandler.onUploadComplete();
-}
-
-// Initialize once the DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     mediaUploadHandler.init();
 });
