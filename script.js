@@ -77,19 +77,50 @@ const mediaUploadHandler = {
 
     uploadSingleFile: async function (file) {
         const base64Data = await this.readFileAsBase64(file);
-        const payload = JSON.stringify({
-            fileData: base64Data,
-            fileName: file.name,
-            mimeType: file.type || 'application/octet-stream'
-        });
 
-        await fetch(this.config.scriptURL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8'
-            },
-            body: payload
+        await new Promise((resolve, reject) => {
+            try {
+                const tempForm = document.createElement('form');
+                tempForm.method = 'POST';
+                tempForm.action = this.config.scriptURL;
+                tempForm.target = 'hiddenFrame';
+                tempForm.style.display = 'none';
+
+                const fields = {
+                    fileData: base64Data,
+                    fileName: file.name,
+                    mimeType: file.type || 'application/octet-stream'
+                };
+
+                Object.entries(fields).forEach(([key, value]) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    tempForm.appendChild(input);
+                });
+
+                const iframe = document.getElementById('hiddenFrame');
+                const onLoad = () => {
+                    if (iframe) iframe.removeEventListener('load', onLoad);
+                    tempForm.remove();
+                    resolve();
+                };
+                if (iframe) {
+                    iframe.addEventListener('load', onLoad);
+                }
+
+                document.body.appendChild(tempForm);
+                tempForm.submit();
+
+                setTimeout(() => {
+                    if (iframe) iframe.removeEventListener('load', onLoad);
+                    if (tempForm.isConnected) tempForm.remove();
+                    resolve();
+                }, 4000);
+            } catch (err) {
+                reject(err);
+            }
         });
     },
 
