@@ -1,0 +1,138 @@
+/**
+ * Arthur Murray Marlton - Event Media Upload Stylesheet
+ * Styles the studio maroon backdrop, gold card container, Dancing Script branding,
+ * custom file picker button, submit control, and status feedback states.
+ */
+
+/* Reset box sizing so padding and borders stay within declared widths */
+* {
+    box-sizing: border-box;
+}
+
+/* Studio maroon background and centered mobile-friendly layout */
+body {
+    background-color: #5d1833;
+    font-family: 'Roboto', sans-serif;
+    color: #000000;
+    text-align: center;
+    margin: 0;
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* Gold card container holding studio branding, upload form, and status */
+.container {
+    max-width: 450px;
+    width: 100%;
+    background-color: #dfaf37;
+    padding: 40px 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Studio script heading */
+h2 {
+    font-family: 'Dancing Script', cursive;
+    color: #5d1833;
+    font-size: 46px;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+}
+
+/* Subtitle prompt below studio name */
+p {
+    color: #000000;
+    font-size: 17px;
+    font-weight: 300;
+    margin: 0 0 25px 0;
+}
+
+/* Hide native file input while keeping it accessible via its paired <label> */
+input[type="file"] {
+    display: none;
+}
+
+/* Dark slate-gray button label for selecting photos and videos */
+.custom-file-upload {
+    background-color: #3a4652;
+    color: #ffffff;
+    padding: 12px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: 400;
+    margin-bottom: 18px;
+    transition: background-color 0.25s ease;
+}
+
+.custom-file-upload:hover {
+    background-color: #4f5e6e;
+}
+
+/* Displays selected file count without shifting card height */
+#fileName {
+    font-size: 14px;
+    color: #000000;
+    margin-bottom: 20px;
+    min-height: 1.2em;
+}
+
+/* Primary maroon-accented submit button */
+button[type="submit"] {
+    background-color: #a72b5a;
+    color: #ffffff;
+    border: none;
+    padding: 13px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Roboto', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    width: 100%;
+    transition: background-color 0.25s ease;
+}
+
+button[type="submit"]:hover:not(:disabled) {
+    background-color: #5d1833;
+}
+
+button[type="submit"]:disabled {
+    background-color: #8c8c8c;
+    cursor: not-allowed;
+}
+
+/* Live upload status and validation message area */
+#status {
+    margin-top: 18px;
+    font-size: 14px;
+    font-weight: 500;
+    min-height: 1.2em;
+    word-break: break-word;
+}
+
+/* Footer metadata inside the card */
+footer {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.15);
+    font-size: 12px;
+}
+
+footer p {
+    font-size: 12px;
+    margin: 4px 0;
+}
+
+footer a {
+    color: #5d1833;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
