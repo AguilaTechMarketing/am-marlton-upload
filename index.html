@@ -1,46 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arthur Murray Marlton - Event Media Upload</title>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <!-- Add the logo image here -->
-            <img src="AMDS_Logo.png" alt="Arthur Murray Dance Center Logo">
-            
-            <h2>Arthur Murray Marlton</h2>
-            <p>Share your event photos and videos with us!</p>
-        </header>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Arthur Murray Marlton - Event Media Upload</title>
+        <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <!-- Changed back to upload-container to match the CSS -->
+        <div class="upload-container">
+             <!-- Changed back to class="header" to match the CSS -->
+             <div class="header">
+                <img src="AMDS_Logo.png" alt="Arthur Murray Dance Center Logo">
+                <h2>Arthur Murray Marlton</h2>
+                <p>Share your event photos and videos with us!</p>
+             </div>
 
-        <section class="upload-section">
-            <form id="uploadForm">
+             <div class="form-group">
                 <label for="fileInput" class="custom-file-upload">
                     Choose Photos / Videos
                 </label>
-                <input type="file" id="fileInput" accept="image/*,video/*" multiple required>
+                 <input type="file" id="fileInput" accept="image/*,video/*" multiple required>
+                 <div id="fileNameDisplay">No file(s) selected</div>
+             </div>
 
-                <div id="fileName">No file(s) selected</div>
+             <button id="uploadBtn" disabled>Upload to Studio</button>
+             <div id="uploadStatus"></div>
 
-                <button type="submit" id="submitBtn">Upload to Studio</button>
-            </form>
+             <div id="progressContainer" class="hidden">
+                <div class="progress-bar-bg">
+                    <div id="progressBar"></div>
+                </div>
+                <p id="statusText">Ready to upload...</p>
+             </div>
 
-            <div id="status"></div>
-        </section>
-
-        <footer>
-            <p>&copy; 2026 Arthur Murray Marlton. All rights reserved.</p>
-            <p>Contact us at <a href="mailto:info@arthurmurraymarlton.com">info@arthurmurraymarlton.com</a></p>
-        </footer>
-    </div>
-
-    <!-- Hidden iframe used to submit Base64-encoded form payloads without CORS errors -->
-    <iframe id="hiddenFrame" name="hiddenFrame" style="display:none;"></iframe>
-
-    <script src="script.js"></script>
-</body>
+             <div class="footer">
+                <p>&copy; 2026 Arthur Murray Marlton. All rights reserved.</p>
+                <p>Contact us at <a href="mailto:info@arthurmurraymarlton.com">info@arthurmurraymarlton.com</a></p>
+             </div>
+        </div>
+        
+        <script src="script.js"></script>
+    </body>
 </html>
