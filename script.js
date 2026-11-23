@@ -1,176 +1,115 @@
-/**
- * Arthur Murray Marlton - Frontend Event Media Upload Handler
- * Reads selected photos/videos as Base64 and posts them to Google Apps Script,
- * verifying the returned JSON status before reporting success.
- */
-const mediaUploadHandler = {
-    config: {
-        scriptURL: 'https://script.google.com/macros/s/AKfycbzA-r2Ejkx22TZGmPCDRFxS7Q9rqMxtu1PdUpW3pd0K6-MXpGf19qL2oizMSE8TYxKzVA/exec',
-        maxFileSize: 25 * 1024 * 1024, // 25MB per file for reliable Base64 POST requests
-        allowedTypes: [
-            'image/jpeg',
-            'image/png',
-            'image/webp',
-            'image/heic',
-            'image/heif',
-            'video/mp4',
-            'video/quicktime',
-            'video/webm'
-        ],
-        formId: 'uploadForm',
-        fileInputId: 'fileInput',
-        fileNameId: 'fileName',
-        submitBtnId: 'submitBtn',
-        statusId: 'status'
-    },
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyuKt7jN81g0NO1tlgJbCM5rK7VKuEcijvCmlJIdkohxxP8bEa47XqQzpo3wmERt2gH7Q/exec';
 
-    elements: {},
+const fileInput = document.getElementById('fileInput');
+const fileNameDisplay = document.getElementById('fileNameDisplay');
+const uploadBtn = document.getElementById('uploadBtn');
+const progressContainer = document.getElementById('progressContainer');
+const progressBar = document.getElementById('progressBar');
+const statusText = document.getElementById('statusText');
 
-    init: function () {
-        this.elements.form = document.getElementById(this.config.formId);
-        this.elements.fileInput = document.getElementById(this.config.fileInputId);
-        this.elements.fileNameDisplay = document.getElementById(this.config.fileNameId);
-        this.elements.submitBtn = document.getElementById(this.config.submitBtnId);
-        this.elements.statusDiv = document.getElementById(this.config.statusId);
-
-        if (!this.elements.form || !this.elements.fileInput) return;
-
-        this.elements.fileInput.addEventListener('change', () => {
-            this.handleFileSelection();
-        });
-
-        this.elements.form.addEventListener('submit', (event) => {
-            this.handleFormSubmit(event);
-        });
-    },
-
-    handleFileSelection: function () {
-        const files = this.elements.fileInput.files;
-        this.elements.fileNameDisplay.textContent =
-            files && files.length > 0 ? `${files.length} file(s) selected` : 'No file(s) selected';
-    },
-
-    validateFile: function (file) {
-        if (file.size > this.config.maxFileSize) {
-            throw new Error(`"${file.name}" exceeds the 25MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`);
-        }
-        if (file.type && !this.config.allowedTypes.includes(file.type.toLowerCase())) {
-            throw new Error(`"${file.name}" has an unsupported format (${file.type}).`);
-        }
-    },
-
-    readFileAsBase64: function (file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const parts = String(reader.result || '').split(',');
-                if (parts.length < 2 || !parts[1]) {
-                    reject(new Error(`Failed to encode "${file.name}".`));
-                    return;
-                }
-                resolve(parts[1]);
-            };
-            reader.onerror = () => reject(new Error(`Failed to read "${file.name}".`));
-            reader.readAsDataURL(file);
-        });
-    },
-
-    uploadSingleFile: async function (file) {
-        const base64Data = await this.readFileAsBase64(file);
-
-        await new Promise((resolve, reject) => {
-            try {
-                const tempForm = document.createElement('form');
-                tempForm.method = 'POST';
-                tempForm.action = this.config.scriptURL;
-                tempForm.target = 'hiddenFrame';
-                tempForm.style.display = 'none';
-
-                const fields = {
-                    fileData: base64Data,
-                    fileName: file.name,
-                    mimeType: file.type || 'application/octet-stream'
-                };
-
-                Object.entries(fields).forEach(([key, value]) => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = key;
-                    input.value = value;
-                    tempForm.appendChild(input);
-                });
-
-                const iframe = document.getElementById('hiddenFrame');
-                const onLoad = () => {
-                    if (iframe) iframe.removeEventListener('load', onLoad);
-                    tempForm.remove();
-                    resolve();
-                };
-                if (iframe) {
-                    iframe.addEventListener('load', onLoad);
-                }
-
-                document.body.appendChild(tempForm);
-                tempForm.submit();
-
-                setTimeout(() => {
-                    if (iframe) iframe.removeEventListener('load', onLoad);
-                    if (tempForm.isConnected) tempForm.remove();
-                    resolve();
-                }, 4000);
-            } catch (err) {
-                reject(err);
-            }
-        });
-    },
-
-    handleFormSubmit: async function (event) {
-        event.preventDefault();
-        const files = Array.from(this.elements.fileInput.files || []);
-
-        if (files.length === 0) {
-            this.setStatus('Please select at least one photo or video.', '#b71c1c');
-            return;
-        }
-
-        try {
-            files.forEach((file) => this.validateFile(file));
-        } catch (error) {
-            this.setStatus(error.message, '#b71c1c');
-            return;
-        }
-
-        if (this.elements.submitBtn) {
-            this.elements.submitBtn.disabled = true;
-        }
-
-        try {
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                this.setStatus(`Uploading ${file.name} (${i + 1} of ${files.length})...`, '#000000');
-                await this.uploadSingleFile(file);
-            }
-
-            this.setStatus('File(s) successfully uploaded to the studio!', '#2e7d32');
-            this.elements.form.reset();
-            this.elements.fileNameDisplay.textContent = 'No file(s) selected';
-        } catch (error) {
-            this.setStatus(`Upload failed: ${error.message}`, '#b71c1c');
-        } finally {
-            if (this.elements.submitBtn) {
-                this.elements.submitBtn.disabled = false;
-            }
-        }
-    },
-
-    setStatus: function (message, color) {
-        if (this.elements.statusDiv) {
-            this.elements.statusDiv.style.color = color;
-            this.elements.statusDiv.textContent = message;
-        }
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        fileNameDisplay.textContent = fileInput.files[0].name;
+        uploadBtn.disabled = false;
+    } else {
+        fileNameDisplay.textContent = "No file selected";
+        uploadBtn.disabled = true;
     }
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-    mediaUploadHandler.init();
 });
+
+uploadBtn.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    uploadBtn.disabled = true;
+    fileInput.disabled = true;
+    progressContainer.classList.remove('hidden');
+    progressBar.style.width = '0%';
+    statusText.textContent = "Requesting secure upload link...";
+
+    try {
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify({ fileName: file.name })
+        });
+
+        const data = await response.json();
+
+        if (data.status !== 'success' || !data.uploadUrl) {
+            throw new Error(data.message || "Failed to generate secure link.");
+        }
+
+        uploadDirectlyToDrive(data.uploadUrl, file);
+
+    } catch (error) {
+        console.error(error);
+        statusText.textContent = "Error: Could not start upload.";
+        resetUI();
+    }
+});
+
+function uploadDirectlyToDrive(uploadUrl, file) {
+    const xhr = new XMLHttpRequest();
+    let uploadReached100 = false;
+
+    xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            progressBar.style.width = percentComplete + '%';
+            statusText.textContent = `Uploading... ${percentComplete}%`;
+            
+            if (percentComplete === 100) {
+                uploadReached100 = true;
+            }
+        }
+    });
+
+    const triggerSuccessUI = () => {
+        statusText.textContent = "Upload complete! Thank you.";
+        statusText.style.color = "#C0C0C0"; 
+        fileInput.value = ""; 
+        fileNameDisplay.textContent = "No file selected";
+        
+        setTimeout(() => {
+            uploadBtn.disabled = true;
+            fileInput.disabled = false;
+            statusText.style.color = "#cccccc";
+            progressContainer.classList.add('hidden');
+            progressBar.style.width = '0%';
+        }, 3000);
+    };
+
+    xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+            triggerSuccessUI();
+        } else if (uploadReached100) {
+            triggerSuccessUI();
+        } else {
+            statusText.textContent = "Upload failed at the server.";
+            resetUI();
+        }
+    });
+
+    xhr.addEventListener("error", () => {
+        if (uploadReached100) {
+            triggerSuccessUI();
+        } else {
+            statusText.textContent = "Network error. Connection lost.";
+            resetUI();
+        }
+    });
+
+    xhr.open("PUT", uploadUrl, true);
+    xhr.send(file);
+}
+
+function resetUI() {
+    uploadBtn.disabled = false;
+    fileInput.disabled = false;
+    setTimeout(() => {
+        statusText.style.color = "#cccccc";
+    }, 3000);
+}
